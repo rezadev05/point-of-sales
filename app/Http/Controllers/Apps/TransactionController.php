@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Apps;
 
 use App\Exceptions\PaymentGatewayException;
@@ -8,12 +9,16 @@ use App\Models\Customer;
 use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Models\Transaction;
+use App\Models\ReceiptSetting;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use App\Exports\TransactionReportExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
 
 class TransactionController extends Controller
 {
@@ -130,19 +135,28 @@ class TransactionController extends Controller
 
         // Jika produk tidak ditemukan, redirect dengan pesan error
         if (! $product) {
-            return redirect()->back()->with('error', 'Product not found.');
+            return redirect()->back()->with('error', 'Produk tidak ditemukan.');
         }
 
-        // Cek stok produk
-        if ($product->stock < $request->qty) {
-            return redirect()->back()->with('error', 'Out of Stock Product!.');
-        }
-
-        // Cek keranjang
+        // Cek keranjang yang sudah ada
         $cart = Cart::with('product')
             ->where('product_id', $request->product_id)
             ->where('cashier_id', auth()->user()->id)
+            ->whereNull('hold_id')
             ->first();
+
+        // Hitung total qty yang akan ada di cart
+        $currentQty = $cart ? $cart->qty : 0;
+        $totalQty = $currentQty + $request->qty;
+
+        // Validasi stok produk (cek stok kosong atau tidak mencukupi)
+        if ($product->stock <= 0) {
+            return redirect()->back()->with('error', "Stok {$product->title} habis!");
+        }
+
+        if ($product->stock < $totalQty) {
+            return redirect()->back()->with('error', "Stok {$product->title} tidak mencukupi! Tersedia: {$product->stock}, di cart: {$currentQty}");
+        }
 
         if ($cart) {
             // Tingkatkan qty
@@ -162,8 +176,9 @@ class TransactionController extends Controller
             ]);
         }
 
-        return redirect()->route('transactions.index')->with('success', 'Product Added Successfully!.');
+        return redirect()->route('transactions.index')->with('success', 'Produk berhasil ditambahkan!');
     }
+
 
     /**
      * destroyCart
@@ -182,7 +197,6 @@ class TransactionController extends Controller
             // Handle case where no cart is found (e.g., redirect with error message)
             return back()->withErrors(['message' => 'Cart not found']);
         }
-
     }
 
     /**
@@ -200,29 +214,29 @@ class TransactionController extends Controller
 
         $cart = Cart::with('product')->whereId($cart_id)
             ->where('cashier_id', auth()->user()->id)
+            ->whereNull('hold_id')
             ->first();
 
         if (! $cart) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cart item not found',
-            ], 404);
+            return back()->with('error', 'Item keranjang tidak ditemukan');
         }
 
-        // Check stock availability
+        // Validasi stok kosong
+        if ($cart->product->stock <= 0) {
+            return back()->with('error', "Stok {$cart->product->title} habis!");
+        }
+
+        // Validasi stok tidak mencukupi
         if ($cart->product->stock < $request->qty) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stok tidak mencukupi. Tersedia: ' . $cart->product->stock,
-            ], 422);
+            return back()->with('error', "Stok {$cart->product->title} tidak mencukupi! Tersedia: {$cart->product->stock}");
         }
 
-        // Update quantity and price
+        // Update quantity dan price
         $cart->qty   = $request->qty;
         $cart->price = $cart->product->sell_price * $request->qty;
         $cart->save();
 
-        return back()->with('success', 'Quantity updated successfully');
+        return back()->with('success', 'Quantity berhasil diperbarui');
     }
 
     /**
@@ -328,16 +342,15 @@ class TransactionController extends Controller
             ->delete();
 
         if ($deleted === 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Transaksi ditahan tidak ditemukan',
-            ], 404);
+            return redirect()->back()->with('error', 'Transaksi ditahan tidak ditemukan');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Transaksi ditahan berhasil dihapus',
-        ]);
+        // return response()->json([
+        //     'success' => true,
+        //     'message' => 'Transaksi ditahan berhasil dihapus',
+        // ]);
+
+        return redirect()->back()->with('success', 'Transaksi ditahan berhasil dihapus');
     }
 
     /**
@@ -386,7 +399,59 @@ class TransactionController extends Controller
      */
     public function store(Request $request, PaymentGatewayManager $paymentGatewayManager)
     {
+        // Validasi stok produk SEBELUM memproses transaksi
+        $carts = Cart::with('product')
+            ->where('cashier_id', auth()->user()->id)
+            ->whereNull('hold_id')
+            ->get();
+
+        // Cek apakah cart kosong
+        if ($carts->isEmpty()) {
+            return redirect()
+                ->route('transactions.index')
+                ->with('error', 'Keranjang masih kosong.');
+        }
+
+        // Validasi stok setiap produk
+        $outOfStock = [];
+        $insufficientStock = [];
+
+        foreach ($carts as $cart) {
+            $product = $cart->product;
+
+            if (!$product) {
+                return redirect()
+                    ->route('transactions.index')
+                    ->with('error', 'Produk tidak ditemukan.');
+            }
+
+            // Cek stok kosong (0)
+            if ($product->stock <= 0) {
+                $outOfStock[] = $product->title;
+            }
+            // Cek stok tidak mencukupi qty di cart
+            elseif ($product->stock < $cart->qty) {
+                $insufficientStock[] = "{$product->title} (stok tersedia: {$product->stock}, diminta: {$cart->qty})";
+            }
+        }
+
+        // Jika ada produk yang stoknya kosong
+        if (!empty($outOfStock)) {
+            return redirect()
+                ->route('transactions.index')
+                ->with('error', 'Produk berikut stoknya habis: ' . implode(', ', $outOfStock));
+        }
+
+        // Jika ada produk yang stoknya tidak mencukupi
+        if (!empty($insufficientStock)) {
+            return redirect()
+                ->route('transactions.index')
+                ->with('error', 'Stok tidak mencukupi untuk: ' . implode(', ', $insufficientStock));
+        }
+
+        // Lanjutkan proses pembayaran gateway
         $paymentGateway = $request->input('payment_gateway');
+        $isQrisPayment = $paymentGateway === 'qris';
         if ($paymentGateway) {
             $paymentGateway = strtolower($paymentGateway);
         }
@@ -402,6 +467,7 @@ class TransactionController extends Controller
             }
         }
 
+        // Generate invoice
         $length = 10;
         $random = '';
         for ($i = 0; $i < $length; $i++) {
@@ -414,12 +480,14 @@ class TransactionController extends Controller
         $changeAmount  = $isCashPayment ? $request->change : 0;
 
         $transaction = DB::transaction(function () use (
+            $isQrisPayment,
             $request,
             $invoice,
             $cashAmount,
             $changeAmount,
             $paymentGateway,
-            $isCashPayment
+            $isCashPayment,
+            $carts
         ) {
             $transaction = Transaction::create([
                 'cashier_id'     => auth()->user()->id,
@@ -427,15 +495,47 @@ class TransactionController extends Controller
                 'invoice'        => $invoice,
                 'cash'           => $cashAmount,
                 'change'         => $changeAmount,
+                'discount_type'  => $request->discount_type,
+                'discount_value' => $request->discount_value,
                 'discount'       => $request->discount,
+                'tax_type'       => $request->tax_type,
+                'tax_value'      => $request->tax_value,
+                'tax'            => $request->tax,
                 'grand_total'    => $request->grand_total,
                 'payment_method' => $paymentGateway ?: 'cash',
-                'payment_status' => $isCashPayment ? 'paid' : 'pending',
+                'payment_status' => ($isCashPayment || $isQrisPayment) ? 'paid' : 'pending',
             ]);
 
-            $carts = Cart::where('cashier_id', auth()->user()->id)->get();
+            // Hitung subtotal
+            $subtotal = 0;
+            foreach ($carts as $cart) {
+                $subtotal += $cart->price;
+            }
+
+            $total_discount = (float) $request->discount;
+            $total_tax      = (float) $request->tax;
 
             foreach ($carts as $cart) {
+                $product_sell = $cart->product->sell_price;
+                $product_buy  = $cart->product->buy_price;
+
+                $line_sell = $product_sell * $cart->qty;
+                $line_buy  = $product_buy * $cart->qty;
+
+                $line_discount = 0;
+                if ($subtotal > 0 && $total_discount > 0) {
+                    $line_discount = $total_discount * ($line_sell / $subtotal);
+                }
+
+                $line_tax = 0;
+                if ($subtotal > 0 && $total_tax > 0) {
+                    $line_tax = $total_tax * ($line_sell / $subtotal);
+                }
+
+                $line_net_sell = $line_sell - $line_discount;
+
+                $line_profit = $line_net_sell - $line_buy;
+
                 $transaction->details()->create([
                     'transaction_id' => $transaction->id,
                     'product_id'     => $cart->product_id,
@@ -443,21 +543,24 @@ class TransactionController extends Controller
                     'price'          => $cart->price,
                 ]);
 
-                $total_buy_price  = $cart->product->buy_price * $cart->qty;
-                $total_sell_price = $cart->product->sell_price * $cart->qty;
-                $profits          = $total_sell_price - $total_buy_price;
-
                 $transaction->profits()->create([
                     'transaction_id' => $transaction->id,
-                    'total'          => $profits,
+                    'total'          => $line_profit,
                 ]);
 
-                $product        = Product::find($cart->product_id);
+                $product = Product::lockForUpdate()->find($cart->product_id);
+
+                if ($product->stock < $cart->qty) {
+                    throw new \Exception("Stok {$product->title} tidak mencukupi saat checkout.");
+                }
+
                 $product->stock = $product->stock - $cart->qty;
                 $product->save();
             }
 
-            Cart::where('cashier_id', auth()->user()->id)->delete();
+            Cart::where('cashier_id', auth()->user()->id)
+                ->whereNull('hold_id')
+                ->delete();
 
             return $transaction->fresh(['customer']);
         });
@@ -480,19 +583,28 @@ class TransactionController extends Controller
         return to_route('transactions.print', $transaction->invoice);
     }
 
+
     public function print($invoice)
     {
-        //get transaction
-        $transaction = Transaction::with('details.product', 'cashier', 'customer')->where('invoice', $invoice)->firstOrFail();
+        // Get transaction
+        $transaction = Transaction::with('details.product', 'cashier', 'customer')
+            ->where('invoice', $invoice)
+            ->firstOrFail();
+
+        // Get receipt settings
+        $receiptSettings = ReceiptSetting::first();
 
         return Inertia::render('Dashboard/Transactions/Print', [
             'transaction' => $transaction,
+            'receiptSettings' => $receiptSettings,
         ]);
     }
+
 
     /**
      * Display transaction history.
      */
+
     public function history(Request $request)
     {
         $filters = [
@@ -511,22 +623,94 @@ class TransactionController extends Controller
             $query->where('cashier_id', $request->user()->id);
         }
 
-        $query
-            ->when($filters['invoice'], function (Builder $builder, $invoice) {
-                $builder->where('invoice', 'like', '%' . $invoice . '%');
-            })
-            ->when($filters['start_date'], function (Builder $builder, $date) {
-                $builder->whereDate('created_at', '>=', $date);
-            })
-            ->when($filters['end_date'], function (Builder $builder, $date) {
-                $builder->whereDate('created_at', '<=', $date);
-            });
+        // 🔎 Filter invoice
+        $query->when($filters['invoice'], function (Builder $builder, $invoice) {
+            $builder->where('invoice', 'like', '%' . $invoice . '%');
+        });
 
-        $transactions = $query->paginate(10)->withQueryString();
+        // 📅 Filter tanggal
+        $query->when(
+            $filters['start_date'] || $filters['end_date'],
+            function (Builder $builder) use ($filters) {
+                if ($filters['start_date'] && $filters['end_date']) {
+                    $builder->whereBetween('created_at', [
+                        $filters['start_date'] . ' 00:00:00',
+                        $filters['end_date'] . ' 23:59:59',
+                    ]);
+                } elseif ($filters['start_date']) {
+                    $builder->whereDate('created_at', '>=', $filters['start_date']);
+                } elseif ($filters['end_date']) {
+                    $builder->whereDate('created_at', '<=', $filters['end_date']);
+                }
+            }
+        );
+
+        // 🔥 Default: hari ini
+        if (
+            ! $filters['invoice'] &&
+            ! $filters['start_date'] &&
+            ! $filters['end_date']
+        ) {
+            $query->whereDate('created_at', now()->toDateString());
+        }
+
+        $transactions = $query
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('Dashboard/Transactions/History', [
             'transactions' => $transactions,
             'filters'      => $filters,
+            'canDelete'    => $request->user()
+                ? $request->user()->can('transactions-access')
+                : false,
         ]);
+    }
+
+
+
+
+    public function export(Request $request)
+    {
+        $filters = $request->only(['invoice', 'start_date', 'end_date']);
+
+        // default: hari ini
+        $fileName = 'laporan-transaksi-' . now()->format('d-m-Y') . '.xlsx';
+
+        // jika ada filter tanggal
+        if ($request->start_date && $request->end_date) {
+            $start = Carbon::parse($request->start_date)->format('d-m-Y');
+            $end   = Carbon::parse($request->end_date)->format('d-m-Y');
+
+            $fileName = "laporan-transaksi-{$start} {$end}.xlsx";
+        }
+
+        return Excel::download(
+            new TransactionReportExport($filters),
+            $fileName
+        );
+    }
+
+    /**
+     * destroyCart
+     *
+     * @param  mixed $request
+     * @return void
+     */
+    public function destroy(Transaction $transaction)
+    {
+        DB::transaction(function () use ($transaction) {
+
+            // 1. Hapus detail transaksi
+            $transaction->details()->delete();
+
+            // 2. Hapus profit
+            $transaction->profits()->delete();
+
+            // 3. Hapus transaksi
+            $transaction->delete();
+        });
+
+        return back()->with('success', 'Transaksi berhasil dihapus');
     }
 }

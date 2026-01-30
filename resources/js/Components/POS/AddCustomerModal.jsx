@@ -48,7 +48,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
         try {
             const response = await axios.post(
                 route("customers.storeAjax"),
-                form
+                form,
             );
 
             if (response.data.success) {
@@ -60,7 +60,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
             } else {
                 setErrors(response.data.errors || {});
                 toast.error(
-                    response.data.message || "Gagal menambahkan pelanggan"
+                    response.data.message || "Gagal menambahkan pelanggan",
                 );
                 setIsSubmitting(false);
             }
@@ -70,7 +70,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
                 setErrors(err.response.data.errors);
             }
             toast.error(
-                err.response?.data?.message || "Gagal menambahkan pelanggan"
+                err.response?.data?.message || "Gagal menambahkan pelanggan",
             );
             setIsSubmitting(false);
         }

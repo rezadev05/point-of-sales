@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -23,6 +24,8 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('reports-access', '%reports%');
         $this->createRoleWithPermissions('profits-access', '%profits%');
         $this->createRoleWithPermissions('payment-settings-access', '%payment-settings%');
+        $this->createRoleWithPermissions('receipt-access', '%receipt%');
+        $this->createRoleWithPermissions('receipt-update', '%receipt-update%');
 
         Role::create(['name' => 'super-admin']);
 

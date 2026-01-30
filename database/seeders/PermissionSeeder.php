@@ -61,5 +61,8 @@ class PermissionSeeder extends Seeder
 
         // payment settings
         Permission::create(['name' => 'payment-settings-access']);
+
+        Permission::create(['name' => 'receipt-access']);
+        Permission::create(['name' => 'receipt-update']);
     }
 }

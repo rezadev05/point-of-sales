@@ -24,6 +24,9 @@ export default function Payment({ setting, supportedGateways = [] }) {
         xendit_secret_key: setting?.xendit_secret_key ?? "",
         xendit_public_key: setting?.xendit_public_key ?? "",
         xendit_production: setting?.xendit_production ?? false,
+
+        qris_enabled: setting?.qris_enabled ?? false,
+        qris_string: setting?.qris_string ?? "",
     });
 
     useEffect(() => {
@@ -38,6 +41,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
 
     const isGatewaySelectable = (gateway) => {
         if (gateway === "cash") return true;
+        if (gateway === "qris") return data.qris_enabled;
         if (gateway === "midtrans") return data.midtrans_enabled;
         if (gateway === "xendit") return data.xendit_enabled;
         return false;
@@ -99,6 +103,54 @@ export default function Payment({ setting, supportedGateways = [] }) {
                     </div>
                 </div>
 
+                {/* QRIS */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <IconCreditCard size={18} />
+                            QRIS
+                        </h3>
+
+                        <label
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all ${
+                                data.qris_enabled
+                                    ? "bg-success-100 dark:bg-success-900/50 text-success-700 dark:text-success-400"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                            }`}
+                        >
+                            <Checkbox
+                                checked={data.qris_enabled}
+                                onChange={(e) =>
+                                    setData("qris_enabled", e.target.checked)
+                                }
+                            />
+                            {data.qris_enabled ? "Aktif" : "Nonaktif"}
+                        </label>
+                    </div>
+
+                    <div
+                        className={`space-y-4 ${
+                            !data.qris_enabled
+                                ? "opacity-50 pointer-events-none"
+                                : ""
+                        }`}
+                    >
+                        <Input
+                            label="QRIS String"
+                            type="text"
+                            value={data.qris_string}
+                            onChange={(e) =>
+                                setData("qris_string", e.target.value)
+                            }
+                            errors={errors?.qris_string}
+                            placeholder="0002010102122666..."
+                        />
+                        <p className="text-xs text-slate-500">
+                            Gunakan QRIS statis dari bank / penyedia resmi
+                        </p>
+                    </div>
+                </div>
+
                 {/* Midtrans */}
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -118,7 +170,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 onChange={(e) =>
                                     setData(
                                         "midtrans_enabled",
-                                        e.target.checked
+                                        e.target.checked,
                                     )
                                 }
                             />
@@ -140,7 +192,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 onChange={(e) =>
                                     setData(
                                         "midtrans_server_key",
-                                        e.target.value
+                                        e.target.value,
                                     )
                                 }
                                 errors={errors?.midtrans_server_key}
@@ -153,7 +205,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 onChange={(e) =>
                                     setData(
                                         "midtrans_client_key",
-                                        e.target.value
+                                        e.target.value,
                                     )
                                 }
                                 errors={errors?.midtrans_client_key}
@@ -166,7 +218,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 onChange={(e) =>
                                     setData(
                                         "midtrans_production",
-                                        e.target.checked
+                                        e.target.checked,
                                     )
                                 }
                             />
@@ -235,7 +287,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 onChange={(e) =>
                                     setData(
                                         "xendit_production",
-                                        e.target.checked
+                                        e.target.checked,
                                     )
                                 }
                             />

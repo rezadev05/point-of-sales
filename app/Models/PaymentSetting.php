@@ -11,6 +11,7 @@ class PaymentSetting extends Model
 
     public const GATEWAY_MIDTRANS = 'midtrans';
     public const GATEWAY_XENDIT = 'xendit';
+    public const GATEWAY_QRIS = 'qris';
 
     protected $fillable = [
         'default_gateway',
@@ -22,9 +23,12 @@ class PaymentSetting extends Model
         'xendit_secret_key',
         'xendit_public_key',
         'xendit_production',
+        'qris_enabled',
+        'qris_string',
     ];
 
     protected $casts = [
+        'qris_enabled' => 'boolean',
         'midtrans_enabled' => 'boolean',
         'midtrans_production' => 'boolean',
         'xendit_enabled' => 'boolean',
@@ -34,6 +38,14 @@ class PaymentSetting extends Model
     public function enabledGateways(): array
     {
         $gateways = [];
+
+        if ($this->isGatewayReady(self::GATEWAY_QRIS)) {
+            $gateways[] = [
+                'value' => self::GATEWAY_QRIS,
+                'label' => 'QRIS',
+                'description' => 'Kemudahan pembayaran tinggal scan beres.',
+            ];
+        }
 
         if ($this->isGatewayReady(self::GATEWAY_MIDTRANS)) {
             $gateways[] = [
@@ -63,6 +75,8 @@ class PaymentSetting extends Model
             self::GATEWAY_XENDIT => $this->xendit_enabled
                 && filled($this->xendit_secret_key)
                 && filled($this->xendit_public_key),
+            self::GATEWAY_QRIS => $this->qris_enabled
+                && filled($this->qris_string),
             default => false,
         };
     }

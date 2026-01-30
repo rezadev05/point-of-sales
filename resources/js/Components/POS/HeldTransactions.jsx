@@ -36,7 +36,7 @@ export default function HeldTransactions({
     const handleResume = (holdId) => {
         if (hasActiveCart) {
             toast.error(
-                "Selesaikan atau tahan transaksi aktif terlebih dahulu"
+                "Selesaikan atau tahan transaksi aktif terlebih dahulu",
             );
             return;
         }
@@ -55,17 +55,15 @@ export default function HeldTransactions({
                 },
                 onError: (errors) => {
                     toast.error(
-                        errors.message || "Gagal melanjutkan transaksi"
+                        errors.message || "Gagal melanjutkan transaksi",
                     );
                     setResumingId(null);
                 },
-            }
+            },
         );
     };
 
     const handleDelete = (holdId) => {
-        if (!confirm("Hapus transaksi yang ditahan ini?")) return;
-
         setDeletingId(holdId);
 
         router.delete(route("transactions.clearHold", holdId), {

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Head, Link } from "@inertiajs/react";
+import { QRCodeCanvas } from "qrcode.react";
+
 import {
     IconArrowLeft,
     IconPrinter,
@@ -11,8 +13,10 @@ import ThermalReceipt, {
     ThermalReceipt58mm,
 } from "@/Components/Receipt/ThermalReceipt";
 
-export default function Print({ transaction }) {
+export default function Print({ transaction, receiptSettings }) {
     const [printMode, setPrintMode] = useState("invoice"); // 'invoice' | 'thermal80' | 'thermal58'
+
+    const [showQrisModal, setShowQrisModal] = useState(false);
 
     const formatPrice = (price = 0) =>
         Number(price || 0).toLocaleString("id-ID", {
@@ -30,10 +34,31 @@ export default function Print({ transaction }) {
             minute: "2-digit",
         });
 
+    const formatDiscountLabel = () => {
+        if (!transaction.discount || transaction.discount <= 0) return null;
+
+        if (transaction.discount_type === "percent") {
+            return `${transaction.discount_value}%`;
+        }
+
+        return `- ${formatPrice(transaction.discount)}`;
+    };
+
+    const formatTaxLabel = () => {
+        if (!transaction.tax || transaction.tax <= 0) return null;
+
+        if (transaction.tax_type === "percent") {
+            return `${transaction.tax_value}%`;
+        }
+
+        return `+ ${formatPrice(transaction.tax)}`;
+    };
+
     const items = transaction?.details ?? [];
 
     const paymentLabels = {
         cash: "Tunai",
+        qris: "QRIS",
         midtrans: "Midtrans",
         xendit: "Xendit",
     };
@@ -70,6 +95,13 @@ export default function Print({ transaction }) {
     const handlePrint = () => {
         window.print();
     };
+
+    const isQrisPayment = paymentMethodKey === "qris";
+
+    const subtotal =
+        transaction.grand_total +
+        (transaction.discount || 0) -
+        (transaction.tax || 0);
 
     return (
         <>
@@ -134,16 +166,28 @@ export default function Print({ transaction }) {
                                 </button>
                             </div>
 
-                            {showPaymentLink && (
+                            {showPaymentLink && !isQrisPayment && (
                                 <a
                                     href={transaction.payment_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition-colors"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-sm font-semibold text-primary-600 dark:text-primary-400"
                                 >
                                     <IconExternalLink size={18} />
                                     Pembayaran
                                 </a>
+                            )}
+
+                            {isQrisPayment && (
+                                <button
+                                    onClick={() => setShowQrisModal(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800
+                   text-sm font-semibold text-emerald-600 dark:text-emerald-400
+                   hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition"
+                                >
+                                    <IconExternalLink size={18} />
+                                    Tampilkan QRIS
+                                </button>
                             )}
 
                             <button
@@ -155,6 +199,52 @@ export default function Print({ transaction }) {
                                 Cetak
                             </button>
                         </div>
+                        {showQrisModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 print:hidden">
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-6 shadow-xl relative">
+                                    <button
+                                        onClick={() => setShowQrisModal(false)}
+                                        className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+                                    >
+                                        ✕
+                                    </button>
+
+                                    <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white mb-2">
+                                        Scan QRIS
+                                    </h3>
+
+                                    <p className="text-sm text-center text-slate-500 mb-4">
+                                        Total Pembayaran
+                                    </p>
+
+                                    <p className="text-xl font-bold text-center text-emerald-600 mb-4">
+                                        {formatPrice(transaction.grand_total)}
+                                    </p>
+
+                                    <div className="flex justify-center mb-4">
+                                        <QRCodeCanvas
+                                            value={transaction.payment_url}
+                                            size={220}
+                                            level="H"
+                                            includeMargin
+                                        />
+                                    </div>
+
+                                    <p className="text-xs text-center text-slate-500">
+                                        Scan QRIS menggunakan aplikasi pembayan.
+                                    </p>
+
+                                    <div className="mt-4 text-center">
+                                        <span
+                                            className="inline-block px-3 py-1 rounded-full text-xs font-semibold
+                                 bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-400"
+                                        >
+                                            {paymentStatusLabel}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Thermal Receipt Preview */}
@@ -165,15 +255,12 @@ export default function Print({ transaction }) {
                                 {printMode === "thermal80" ? (
                                     <ThermalReceipt
                                         transaction={transaction}
-                                        storeName="TOKO ANDA"
-                                        storeAddress="Jl. Contoh No. 123"
-                                        storePhone="08123456789"
+                                        receiptSettings={receiptSettings}
                                     />
                                 ) : (
                                     <ThermalReceipt58mm
                                         transaction={transaction}
-                                        storeName="TOKO"
-                                        storePhone="08123456789"
+                                        receiptSettings={receiptSettings}
                                     />
                                 )}
                             </div>
@@ -198,7 +285,7 @@ export default function Print({ transaction }) {
                                         </p>
                                         <p className="text-sm opacity-80 print:opacity-100 mt-1">
                                             {formatDateTime(
-                                                transaction.created_at
+                                                transaction.created_at,
                                             )}
                                         </p>
                                     </div>
@@ -312,37 +399,63 @@ export default function Print({ transaction }) {
                             {/* Summary */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-6">
                                 <div className="max-w-xs ml-auto space-y-2 text-sm">
+                                    {/* Subtotal */}
                                     <div className="flex justify-between text-slate-600 dark:text-slate-400">
                                         <span>Subtotal</span>
-                                        <span>
-                                            {formatPrice(
-                                                transaction.grand_total +
-                                                    (transaction.discount || 0)
-                                            )}
-                                        </span>
+                                        <span>{formatPrice(subtotal)}</span>
                                     </div>
-                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                        <span>Diskon</span>
-                                        <span>
-                                            -{" "}
-                                            {formatPrice(transaction.discount)}
-                                        </span>
-                                    </div>
+
+                                    {/* Diskon */}
+                                    {transaction.discount > 0 && (
+                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                            <span>
+                                                Diskon{" "}
+                                                {transaction.discount_type ===
+                                                    "percent" &&
+                                                    `(${transaction.discount_value}%)`}
+                                            </span>
+                                            <span className="text-danger-600">
+                                                -{" "}
+                                                {formatPrice(
+                                                    transaction.discount,
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Pajak */}
+                                    {transaction.tax > 0 && (
+                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                            <span>
+                                                Pajak{" "}
+                                                {transaction.tax_type ===
+                                                    "percent" &&
+                                                    `(${transaction.tax_value}%)`}
+                                            </span>
+                                            <span className="text-success-600">
+                                                + {formatPrice(transaction.tax)}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Total */}
                                     <div className="flex justify-between text-lg font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
                                         <span>Total</span>
                                         <span>
                                             {formatPrice(
-                                                transaction.grand_total
+                                                transaction.grand_total,
                                             )}
                                         </span>
                                     </div>
+
+                                    {/* Cash */}
                                     {paymentMethodKey === "cash" && (
                                         <>
                                             <div className="flex justify-between text-slate-600 dark:text-slate-400 pt-2">
                                                 <span>Tunai</span>
                                                 <span>
                                                     {formatPrice(
-                                                        transaction.cash
+                                                        transaction.cash,
                                                     )}
                                                 </span>
                                             </div>
@@ -350,7 +463,7 @@ export default function Print({ transaction }) {
                                                 <span>Kembali</span>
                                                 <span>
                                                     {formatPrice(
-                                                        transaction.change
+                                                        transaction.change,
                                                     )}
                                                 </span>
                                             </div>
@@ -362,7 +475,8 @@ export default function Print({ transaction }) {
                             {/* Footer */}
                             <div className="px-6 py-4 text-center border-t border-slate-100 dark:border-slate-800">
                                 <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                    Terima kasih telah berbelanja
+                                    “Terima kasih sudah menikmati DCC kami.
+                                    Sampai jumpa lagi!”
                                 </p>
                             </div>
                         </div>

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Transaction extends Model
 {
     use HasFactory;
-    
+
     /**
      * fillable
      *
@@ -22,7 +22,15 @@ class Transaction extends Model
         'invoice',
         'cash',
         'change',
+        // ✅ DISKON
+        'discount_type',
+        'discount_value',
         'discount',
+
+        // ✅ PAJAK
+        'tax_type',
+        'tax_value',
+        'tax',
         'grand_total',
         'payment_method',
         'payment_status',
@@ -75,10 +83,17 @@ class Transaction extends Model
      *
      * @return Attribute
      */
-    protected function createdAt(): Attribute
+    protected $appends = ['created_at_wib'];
+
+    protected function createdAtWib(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => Carbon::parse($value)->format('d-M-Y H:i:s'),
+            get: fn() =>
+            $this->created_at
+                ? $this->created_at
+                ->timezone('Asia/Jakarta')
+                ->format('d-M-Y H:i:s')
+                : null
         );
     }
 }

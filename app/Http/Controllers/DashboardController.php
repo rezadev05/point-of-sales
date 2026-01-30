@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Category;
@@ -94,7 +95,7 @@ class DashboardController extends Controller
             'averageOrder'      => (int) round($averageOrder),
             'todayTransactions' => (int) $todayTransactions,
             'topProducts'       => $topProducts,
-            'recentTransactions'=> $recentTransactions,
+            'recentTransactions' => $recentTransactions,
             'topCustomers'      => $topCustomers,
         ]);
     }

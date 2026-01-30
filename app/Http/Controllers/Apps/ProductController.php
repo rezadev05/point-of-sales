@@ -57,6 +57,7 @@ class ProductController extends Controller
          * validate
          */
         $request->validate([
+            'image' => 'required|image|mimes:png,jpg,jpeg|max:2048',
             'barcode' => 'required|unique:products,barcode',
             'title' => 'required',
             'description' => 'required',
@@ -145,7 +146,6 @@ class ProductController extends Controller
                 'sell_price' => $request->sell_price,
                 'stock' => $request->stock,
             ]);
-
         }
 
         //update product without image

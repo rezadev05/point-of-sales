@@ -56,10 +56,16 @@ export default function Index({
     const [addingProductId, setAddingProductId] = useState(null);
     const [removingItemId, setRemovingItemId] = useState(null);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    // Diskon
+    const [discountType, setDiscountType] = useState("nominal"); // nominal | percent
     const [discountInput, setDiscountInput] = useState("");
+
+    // Pajak
+    const [taxType, setTaxType] = useState("percent"); // percent | nominal
+    const [taxInput, setTaxInput] = useState("");
     const [cashInput, setCashInput] = useState("");
     const [paymentMethod, setPaymentMethod] = useState(
-        defaultPaymentGateway ?? "cash"
+        defaultPaymentGateway ?? "cash",
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [mobileView, setMobileView] = useState("products"); // 'products' | 'cart'
@@ -69,55 +75,102 @@ export default function Index({
     // Ref for search input to enable keyboard focus
     const searchInputRef = useRef(null);
 
+    const getQtyInCart = useCallback(
+        (productId) => {
+            const cartItem = carts.find(
+                (cart) => cart.product_id === productId,
+            );
+            return cartItem ? cartItem.qty : 0;
+        },
+        [carts],
+    );
+
     // Set default payment method
     useEffect(() => {
         setPaymentMethod(defaultPaymentGateway ?? "cash");
     }, [defaultPaymentGateway]);
 
     // Barcode scanner integration
+    // ✅ GANTI FUNCTION INI
     const handleBarcodeScan = useCallback(
         (barcode) => {
             const product = products.find(
-                (p) => p.barcode?.toLowerCase() === barcode.toLowerCase()
+                (p) => p.barcode?.toLowerCase() === barcode.toLowerCase(),
             );
 
             if (product) {
-                if (product.stock > 0) {
-                    handleAddToCart(product);
-                    toast.success(`${product.title} ditambahkan (barcode)`);
-                } else {
-                    toast.error(`${product.title} stok habis`);
+                // ✅ Validasi stok kosong
+                if (product.stock <= 0) {
+                    toast.error(`${product.title} stok habis!`);
+                    return;
                 }
+
+                // ✅ Cek qty di cart
+                const currentQtyInCart = getQtyInCart(product.id);
+                const totalQty = currentQtyInCart + 1;
+
+                // ✅ Validasi stok tidak mencukupi
+                if (product.stock < totalQty) {
+                    toast.error(
+                        `Stok ${product.title} tidak mencukupi! Tersedia: ${product.stock}, di cart: ${currentQtyInCart}`,
+                    );
+                    return;
+                }
+
+                handleAddToCart(product);
+                toast.success(`${product.title} ditambahkan (barcode)`);
             } else {
                 toast.error(`Produk tidak ditemukan: ${barcode}`);
             }
         },
-        [products]
+        [products, carts], // ✅ Tambahkan carts ke dependency
     );
 
     const { isScanning } = useBarcodeScanner(handleBarcodeScan, {
         enabled: true,
         minLength: 3,
     });
-
-    // Calculations
-    const discount = useMemo(
-        () => Math.max(0, Number(discountInput) || 0),
-        [discountInput]
-    );
     const subtotal = useMemo(() => carts_total ?? 0, [carts_total]);
-    const payable = useMemo(
-        () => Math.max(subtotal - discount, 0),
-        [subtotal, discount]
-    );
+
+    const discount = useMemo(() => {
+        const value = Number(discountInput) || 0;
+        if (value <= 0) return 0;
+
+        if (discountType === "percent") {
+            return Math.floor((subtotal * value) / 100);
+        }
+
+        return value;
+    }, [discountInput, discountType, subtotal]);
+
+    const tax = useMemo(() => {
+        const value = Number(taxInput) || 0;
+        if (value <= 0) return 0;
+
+        const base = Math.max(subtotal - discount, 0);
+
+        if (taxType === "percent") {
+            return Math.floor((base * value) / 100);
+        }
+
+        return value;
+    }, [taxInput, taxType, subtotal, discount]);
+
+    const payable = useMemo(() => {
+        const afterDiscount = Math.max(subtotal - discount, 0);
+        return afterDiscount + tax;
+    }, [subtotal, discount, tax]);
+
     const isCashPayment = paymentMethod === "cash";
+    const isQrisPayment = paymentMethod === "qris";
+
     const cash = useMemo(
         () => (isCashPayment ? Math.max(0, Number(cashInput) || 0) : payable),
-        [cashInput, isCashPayment, payable]
+        [cashInput, isCashPayment, payable],
     );
     const cartCount = useMemo(
         () => carts.reduce((total, item) => total + Number(item.qty), 0),
-        [carts]
+        [carts],
     );
 
     // Payment options
@@ -125,7 +178,7 @@ export default function Index({
         const options = Array.isArray(paymentGateways)
             ? paymentGateways.filter(
                   (gateway) =>
-                      gateway?.value && gateway.value.toLowerCase() !== "cash"
+                      gateway?.value && gateway.value.toLowerCase() !== "cash",
               )
             : [];
 
@@ -147,8 +200,26 @@ export default function Index({
     }, [isCashPayment, payable]);
 
     // Handle add product to cart
+    // ✅ EDIT FUNCTION INI - Tambahkan validasi sebelum setAddingProductId
     const handleAddToCart = async (product) => {
         if (!product?.id) return;
+
+        // ✅ TAMBAHKAN VALIDASI INI
+        if (product.stock <= 0) {
+            toast.error(`${product.title} stok habis!`);
+            return;
+        }
+
+        const currentQtyInCart = getQtyInCart(product.id);
+        const totalQty = currentQtyInCart + 1;
+
+        if (product.stock < totalQty) {
+            toast.error(
+                `Stok ${product.title} tidak mencukupi! Tersedia: ${product.stock}, di cart: ${currentQtyInCart}`,
+            );
+            return;
+        }
+        // ✅ AKHIR VALIDASI
 
         setAddingProductId(product.id);
 
@@ -169,15 +240,36 @@ export default function Index({
                     toast.error("Gagal menambahkan produk");
                     setAddingProductId(null);
                 },
-            }
+            },
         );
     };
 
     // Handle update cart quantity
     const [updatingCartId, setUpdatingCartId] = useState(null);
 
+    // ✅ EDIT FUNCTION INI
     const handleUpdateQty = (cartId, newQty) => {
         if (newQty < 1) return;
+
+        // ✅ TAMBAHKAN VALIDASI INI
+        const cartItem = carts.find((cart) => cart.id === cartId);
+        if (!cartItem) return;
+
+        const product = cartItem.product;
+
+        if (product.stock <= 0) {
+            toast.error(`Stok ${product.title} habis!`);
+            return;
+        }
+
+        if (product.stock < newQty) {
+            toast.error(
+                `Stok ${product.title} tidak mencukupi! Tersedia: ${product.stock}`,
+            );
+            return;
+        }
+        // ✅ AKHIR VALIDASI
+
         setUpdatingCartId(cartId);
 
         router.patch(
@@ -192,7 +284,7 @@ export default function Index({
                     toast.error(errors?.message || "Gagal update quantity");
                     setUpdatingCartId(null);
                 },
-            }
+            },
         );
     };
 
@@ -225,7 +317,7 @@ export default function Index({
                     toast.error(errors?.message || "Gagal menahan transaksi");
                     setIsHolding(false);
                 },
-            }
+            },
         );
     };
 
@@ -257,7 +349,7 @@ export default function Index({
                 case "F3":
                     e.preventDefault();
                     setMobileView(
-                        mobileView === "products" ? "cart" : "products"
+                        mobileView === "products" ? "cart" : "products",
                     );
                     break;
                 case "F4":
@@ -294,6 +386,7 @@ export default function Index({
     };
 
     // Handle submit transaction
+    // ✅ EDIT FUNCTION INI
     const handleSubmitTransaction = () => {
         if (carts.length === 0) {
             toast.error("Keranjang masih kosong");
@@ -305,6 +398,42 @@ export default function Index({
             return;
         }
 
+        // ✅ TAMBAHKAN VALIDASI INI
+        const outOfStockItems = [];
+        const insufficientStockItems = [];
+
+        carts.forEach((cartItem) => {
+            const product = cartItem.product;
+
+            if (!product) {
+                toast.error("Produk tidak ditemukan di keranjang");
+                return;
+            }
+
+            if (product.stock <= 0) {
+                outOfStockItems.push(product.title);
+            } else if (product.stock < cartItem.qty) {
+                insufficientStockItems.push(
+                    `${product.title} (tersedia: ${product.stock}, diminta: ${cartItem.qty})`,
+                );
+            }
+        });
+
+        if (outOfStockItems.length > 0) {
+            toast.error(
+                `Stok habis: ${outOfStockItems.join(", ")}. Silakan hapus dari keranjang.`,
+            );
+            return;
+        }
+
+        if (insufficientStockItems.length > 0) {
+            toast.error(
+                `Stok tidak mencukupi: ${insufficientStockItems.join(", ")}`,
+            );
+            return;
+        }
+        // ✅ AKHIR VALIDASI
+
         if (isCashPayment && cash < payable) {
             toast.error("Jumlah pembayaran kurang dari total");
             return;
@@ -312,31 +441,25 @@ export default function Index({
 
         setIsSubmitting(true);
 
-        router.post(
-            route("transactions.store"),
-            {
-                customer_id: selectedCustomer.id,
-                discount,
-                grand_total: payable,
-                cash: isCashPayment ? cash : payable,
-                change: isCashPayment ? Math.max(cash - payable, 0) : 0,
-                payment_gateway: isCashPayment ? null : paymentMethod,
-            },
-            {
-                onSuccess: () => {
-                    setDiscountInput("");
-                    setCashInput("");
-                    setSelectedCustomer(null);
-                    setPaymentMethod(defaultPaymentGateway ?? "cash");
-                    setIsSubmitting(false);
-                    toast.success("Transaksi berhasil!");
-                },
-                onError: () => {
-                    setIsSubmitting(false);
-                    toast.error("Gagal menyimpan transaksi");
-                },
-            }
-        );
+        const discountValueNum = Number(discountInput) || 0;
+        const taxValueNum = Number(taxInput) || 0;
+
+        router.post(route("transactions.store"), {
+            customer_id: selectedCustomer.id,
+
+            discount_type: discountType,
+            discount_value: discountType === "percent" ? discountValueNum : 0,
+            discount: discountType === "nominal" ? discountValueNum : discount,
+
+            tax_type: taxType,
+            tax_value: taxType === "percent" ? taxValueNum : 0,
+            tax: taxType === "nominal" ? taxValueNum : tax,
+
+            grand_total: payable,
+            cash: isCashPayment ? cash : payable,
+            change: isCashPayment ? Math.max(cash - payable, 0) : 0,
+            payment_gateway: isCashPayment ? null : paymentMethod,
+        });
     };
 
     // Filter products including out of stock
@@ -360,7 +483,7 @@ export default function Index({
         <>
             <Head title="Transaksi" />
 
-            <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row">
+            <div className="h-[calc(100dvh-4rem)] flex flex-col lg:flex-row overflow-hidden">
                 {/* Mobile Tab Switcher */}
                 <div className="lg:hidden flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <button
@@ -411,6 +534,7 @@ export default function Index({
                         onAddToCart={handleAddToCart}
                         addingProductId={addingProductId}
                         searchInputRef={searchInputRef}
+                        carts={carts}
                     />
                 </div>
 
@@ -419,10 +543,10 @@ export default function Index({
                     className={`w-full lg:w-[420px] xl:w-[480px] flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 ${
                         mobileView !== "cart" ? "hidden lg:flex" : "flex"
                     }`}
-                    style={{ height: "calc(100vh - 4rem)" }}
+                    style={{ height: "calc(100dvh - 4rem)" }}
                 >
                     {/* Customer Select - Fixed */}
-                    <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+                    <div className="sticky top-0 z-20 p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                         <CustomerSelect
                             customers={customers}
                             selected={selectedCustomer}
@@ -442,7 +566,7 @@ export default function Index({
                     )}
 
                     {/* Cart Items - Scrollable */}
-                    <div className="flex-1 overflow-y-auto min-h-0">
+                    <div className="flex-1 overflow-y-auto min-h-0 pb-16">
                         {/* Hold Button - at top of cart section */}
                         {carts.length > 0 && (
                             <div className="p-3 border-b border-slate-200 dark:border-slate-800">
@@ -469,88 +593,149 @@ export default function Index({
 
                             {carts.length > 0 ? (
                                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                                    {carts.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 group"
-                                        >
-                                            <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                                                {item.product?.image ? (
-                                                    <img
-                                                        src={getProductImageUrl(
-                                                            item.product.image
-                                                        )}
-                                                        alt={item.product.title}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <IconShoppingCart
-                                                            size={14}
-                                                            className="text-slate-400"
+                                    {carts.map((item) => {
+                                        // ✅ Tambahkan validasi stok
+                                        const isOutOfStock =
+                                            item.product?.stock <= 0;
+                                        const canIncrement =
+                                            item.product?.stock > item.qty;
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 group relative"
+                                            >
+                                                <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                                                    {item.product?.image ? (
+                                                        <img
+                                                            src={getProductImageUrl(
+                                                                item.product
+                                                                    .image,
+                                                            )}
+                                                            alt={
+                                                                item.product
+                                                                    .title
+                                                            }
+                                                            className="w-full h-full object-cover"
                                                         />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-                                                    {item.product?.title ||
-                                                        "Produk"}
-                                                </p>
-                                                <p className="text-xs text-slate-500">
-                                                    {formatPrice(
-                                                        item.product
-                                                            ?.sell_price || 0
-                                                    )}{" "}
-                                                    × {item.qty}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateQty(
-                                                            item.id,
-                                                            Math.max(
-                                                                1,
-                                                                item.qty - 1
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <IconShoppingCart
+                                                                size={14}
+                                                                className="text-slate-400"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                                                        {item.product?.title ||
+                                                            "Produk"}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {formatPrice(
+                                                            item.product
+                                                                ?.sell_price ||
+                                                                0,
+                                                        )}{" "}
+                                                        × {item.qty}
+                                                    </p>
+                                                    {/* ✅ Warning stok di bawah harga */}
+                                                    {item.product &&
+                                                        item.product.stock <=
+                                                            5 && (
+                                                            <p
+                                                                className={`text-[10px] font-semibold ${
+                                                                    item.product
+                                                                        .stock <=
+                                                                    0
+                                                                        ? "text-red-600"
+                                                                        : "text-orange-600"
+                                                                }`}
+                                                            >
+                                                                {item.product
+                                                                    .stock <= 0
+                                                                    ? "⚠️ Stok Habis!"
+                                                                    : `⚠️ Stok: ${item.product.stock}`}
+                                                            </p>
+                                                        )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                    {/* Decrement Button */}
+                                                    <button
+                                                        onClick={() =>
+                                                            handleUpdateQty(
+                                                                item.id,
+                                                                Math.max(
+                                                                    1,
+                                                                    item.qty -
+                                                                        1,
+                                                                ),
                                                             )
-                                                        )
-                                                    }
-                                                    disabled={item.qty <= 1}
-                                                    className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 disabled:opacity-50 text-xs"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="w-6 text-center text-xs font-medium">
-                                                    {item.qty}
-                                                </span>
-                                                <button
-                                                    onClick={() =>
-                                                        handleUpdateQty(
-                                                            item.id,
-                                                            item.qty + 1
-                                                        )
-                                                    }
-                                                    className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 text-xs"
-                                                >
-                                                    +
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleRemoveFromCart(
+                                                        }
+                                                        disabled={
+                                                            item.qty <= 1 ||
+                                                            updatingCartId ===
+                                                                item.id
+                                                        }
+                                                        className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                                    >
+                                                        -
+                                                    </button>
+
+                                                    <span className="w-6 text-center text-xs font-medium">
+                                                        {item.qty}
+                                                    </span>
+
+                                                    {/* ✅ Increment Button - dengan validasi stok */}
+                                                    <button
+                                                        onClick={() =>
+                                                            handleUpdateQty(
+                                                                item.id,
+                                                                item.qty + 1,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            !canIncrement ||
+                                                            updatingCartId ===
+                                                                item.id ||
+                                                            isOutOfStock
+                                                        }
+                                                        className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                                        title={
+                                                            !canIncrement
+                                                                ? `Stok maksimal: ${item.product?.stock}`
+                                                                : ""
+                                                        }
+                                                    >
+                                                        +
+                                                    </button>
+
+                                                    {/* Remove Button */}
+                                                    <button
+                                                        onClick={() =>
+                                                            handleRemoveFromCart(
+                                                                item.id,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            removingItemId ===
                                                             item.id
-                                                        )
-                                                    }
-                                                    className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950/50 ml-1"
-                                                >
-                                                    <IconTrash size={12} />
-                                                </button>
+                                                        }
+                                                        className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950/50 ml-1 disabled:opacity-50"
+                                                    >
+                                                        <IconTrash size={12} />
+                                                    </button>
+                                                </div>
+
+                                                <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 w-16 text-right">
+                                                    {formatPrice(item.price)}
+                                                </p>
                                             </div>
-                                            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 w-16 text-right">
-                                                {formatPrice(item.price)}
-                                            </p>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="py-6 text-center">
@@ -595,6 +780,8 @@ export default function Index({
                                             >
                                                 {method.value === "cash" ? (
                                                     <IconCash size={16} />
+                                                ) : method.value === "qris" ? (
+                                                    <IconBarcode size={16} />
                                                 ) : (
                                                     <IconCreditCard size={16} />
                                                 )}
@@ -629,7 +816,7 @@ export default function Index({
                                                     key={amt}
                                                     onClick={() =>
                                                         setCashInput(
-                                                            String(amt)
+                                                            String(amt),
                                                         )
                                                     }
                                                     className={`py-2 px-1 rounded-lg text-xs font-semibold transition-all ${
@@ -641,21 +828,58 @@ export default function Index({
                                                 >
                                                     {formatPrice(amt)}
                                                 </button>
-                                            )
+                                            ),
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* QRIS Amount - Read Only */}
+                            {isQrisPayment && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                                        Nominal QRIS (Rp)
+                                    </label>
+
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                                            Rp
+                                        </span>
+
+                                        <input
+                                            type="text"
+                                            value={payable.toLocaleString(
+                                                "id-ID",
+                                            )}
+                                            readOnly
+                                            className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700
+                           bg-slate-100 dark:bg-slate-800
+                           text-base font-semibold text-slate-700 dark:text-slate-200
+                           cursor-not-allowed"
+                                        />
+                                    </div>
+
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Nominal saat ini untuk pembayaran QRIS.
+                                    </p>
                                 </div>
                             )}
 
                             {/* Discount Input */}
                             <div>
                                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                    Diskon (Rp)
+                                    Diskon
                                 </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                                        Rp
+
+                                <div className="relative flex items-center">
+                                    {/* Prefix */}
+                                    <span className="absolute left-3 text-slate-400 text-sm">
+                                        {discountType === "percent"
+                                            ? "%"
+                                            : "Rp"}
                                     </span>
+
+                                    {/* Input */}
                                     <input
                                         type="text"
                                         inputMode="numeric"
@@ -664,13 +888,138 @@ export default function Index({
                                             setDiscountInput(
                                                 e.target.value.replace(
                                                     /[^\d]/g,
-                                                    ""
-                                                )
+                                                    "",
+                                                ),
                                             )
                                         }
                                         placeholder="0"
-                                        className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                        className="w-full h-10 pl-10 pr-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-base font-semibold focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                     />
+
+                                    {/* Radio */}
+                                    <div className="absolute right-2 flex gap-1 text-xs font-medium">
+                                        <label className="flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="discount_type"
+                                                value="nominal"
+                                                checked={
+                                                    discountType === "nominal"
+                                                }
+                                                onChange={() =>
+                                                    setDiscountType("nominal")
+                                                }
+                                                className="hidden"
+                                            />
+                                            <span
+                                                className={
+                                                    discountType === "nominal"
+                                                        ? "text-primary-600"
+                                                        : "text-slate-400"
+                                                }
+                                            >
+                                                Rp
+                                            </span>
+                                        </label>
+
+                                        <label className="flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="discount_type"
+                                                value="percent"
+                                                checked={
+                                                    discountType === "percent"
+                                                }
+                                                onChange={() =>
+                                                    setDiscountType("percent")
+                                                }
+                                                className="hidden"
+                                            />
+                                            <span
+                                                className={
+                                                    discountType === "percent"
+                                                        ? "text-primary-600"
+                                                        : "text-slate-400"
+                                                }
+                                            >
+                                                %
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+                                    Pajak
+                                </label>
+
+                                <div className="relative flex items-center">
+                                    <span className="absolute left-3 text-slate-400 text-sm">
+                                        {taxType === "percent" ? "%" : "Rp"}
+                                    </span>
+
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={taxInput}
+                                        onChange={(e) =>
+                                            setTaxInput(
+                                                e.target.value.replace(
+                                                    /[^\d]/g,
+                                                    "",
+                                                ),
+                                            )
+                                        }
+                                        placeholder="0"
+                                        className="w-full h-10 pl-10 pr-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-base font-semibold focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                    />
+
+                                    <div className="absolute right-2 flex gap-1 text-xs font-medium">
+                                        <label className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="tax_type"
+                                                value="nominal"
+                                                checked={taxType === "nominal"}
+                                                onChange={() =>
+                                                    setTaxType("nominal")
+                                                }
+                                                className="hidden"
+                                            />
+                                            <span
+                                                className={
+                                                    taxType === "nominal"
+                                                        ? "text-primary-600"
+                                                        : "text-slate-400"
+                                                }
+                                            >
+                                                Rp
+                                            </span>
+                                        </label>
+
+                                        <label className="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="tax_type"
+                                                value="percent"
+                                                checked={taxType === "percent"}
+                                                onChange={() =>
+                                                    setTaxType("percent")
+                                                }
+                                                className="hidden"
+                                            />
+                                            <span
+                                                className={
+                                                    taxType === "percent"
+                                                        ? "text-primary-600"
+                                                        : "text-slate-400"
+                                                }
+                                            >
+                                                %
+                                            </span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -692,8 +1041,8 @@ export default function Index({
                                                 setCashInput(
                                                     e.target.value.replace(
                                                         /[^\d]/g,
-                                                        ""
-                                                    )
+                                                        "",
+                                                    ),
                                                 )
                                             }
                                             placeholder="0"
@@ -706,7 +1055,7 @@ export default function Index({
                     </div>
 
                     {/* Summary & Submit - Fixed at bottom */}
-                    <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 p-3">
+                    <div className="sticky bottom-0 flex-shrink-0 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/95 p-3 ">
                         {/* Summary Row */}
                         <div className="flex justify-between items-center mb-2 text-sm">
                             <span className="text-slate-500">Subtotal</span>
@@ -722,6 +1071,15 @@ export default function Index({
                                 </span>
                             </div>
                         )}
+                        {tax > 0 && (
+                            <div className="flex justify-between items-center mb-2 text-sm">
+                                <span className="text-slate-500">Pajak</span>
+                                <span className="text-success-600">
+                                    +{formatPrice(tax)}
+                                </span>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center mb-3">
                             <span className="font-semibold text-slate-800 dark:text-white">
                                 Total
@@ -770,13 +1128,13 @@ export default function Index({
                                         {!carts.length
                                             ? "Keranjang Kosong"
                                             : !selectedCustomer
-                                            ? "Pilih Pelanggan"
-                                            : paymentMethod === "cash" &&
-                                              cash < payable
-                                            ? `Kurang ${formatPrice(
-                                                  payable - cash
-                                              )}`
-                                            : "Selesaikan Transaksi"}
+                                              ? "Pilih Pelanggan"
+                                              : paymentMethod === "cash" &&
+                                                  cash < payable
+                                                ? `Kurang ${formatPrice(
+                                                      payable - cash,
+                                                  )}`
+                                                : "Selesaikan Transaksi"}
                                     </span>
                                 </>
                             )}

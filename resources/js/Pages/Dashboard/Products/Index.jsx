@@ -235,7 +235,9 @@ export default function Index({ products }) {
                                                 <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
                                                     {product.image ? (
                                                         <img
-                                                            src={`/storage/products/${product.image}`}
+                                                            src={getProductImageUrl(
+                                                                product.image,
+                                                            )}
                                                             alt={product.title}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -275,8 +277,8 @@ export default function Index({ products }) {
                                                     product.stock === 0
                                                         ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
                                                         : product.stock <= 5
-                                                        ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
-                                                        : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
+                                                          ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
+                                                          : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
                                                 }`}
                                             >
                                                 {product.stock}
@@ -297,7 +299,7 @@ export default function Index({ products }) {
                                                     }
                                                     href={route(
                                                         "products.edit",
-                                                        product.id
+                                                        product.id,
                                                     )}
                                                 />
                                                 <Button
@@ -313,7 +315,7 @@ export default function Index({ products }) {
                                                     }
                                                     url={route(
                                                         "products.destroy",
-                                                        product.id
+                                                        product.id,
                                                     )}
                                                 />
                                             </div>

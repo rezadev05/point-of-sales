@@ -73,10 +73,10 @@ const ProfitReport = ({
     useEffect(() => {
         setFilterData({ ...defaultFilters, ...filters });
         setSelectedCashier(
-            cashiers.find((c) => String(c.id) === filters.cashier_id) || null
+            cashiers.find((c) => String(c.id) === filters.cashier_id) || null,
         );
         setSelectedCustomer(
-            customers.find((c) => String(c.id) === filters.customer_id) || null
+            customers.find((c) => String(c.id) === filters.customer_id) || null,
         );
     }, [filters, cashiers, customers]);
 
@@ -210,7 +210,7 @@ const ProfitReport = ({
                                         onChange={(e) =>
                                             handleChange(
                                                 "start_date",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -226,7 +226,7 @@ const ProfitReport = ({
                                         onChange={(e) =>
                                             handleChange(
                                                 "end_date",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -243,7 +243,7 @@ const ProfitReport = ({
                                         onChange={(e) =>
                                             handleChange(
                                                 "invoice",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -257,7 +257,7 @@ const ProfitReport = ({
                                         setSelectedCashier(v);
                                         handleChange(
                                             "cashier_id",
-                                            v ? String(v.id) : ""
+                                            v ? String(v.id) : "",
                                         );
                                     }}
                                     placeholder="Semua kasir"
@@ -271,7 +271,7 @@ const ProfitReport = ({
                                         setSelectedCustomer(v);
                                         handleChange(
                                             "customer_id",
-                                            v ? String(v.id) : ""
+                                            v ? String(v.id) : "",
                                         );
                                     }}
                                     placeholder="Semua pelanggan"
@@ -363,12 +363,12 @@ const ProfitReport = ({
                                             </td>
                                             <td className="px-4 py-4 text-right text-sm text-slate-900 dark:text-white">
                                                 {formatCurrency(
-                                                    trx.grand_total ?? 0
+                                                    trx.grand_total ?? 0,
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-right text-sm font-semibold text-success-600 dark:text-success-400">
                                                 {formatCurrency(
-                                                    trx.total_profit ?? 0
+                                                    trx.total_profit ?? 0,
                                                 )}
                                             </td>
                                         </tr>

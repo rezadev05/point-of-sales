@@ -44,7 +44,8 @@ class SalesReportController extends Controller
             ->selectRaw('
                 COUNT(*) as orders_count,
                 COALESCE(SUM(grand_total), 0) as revenue_total,
-                COALESCE(SUM(discount), 0) as discount_total
+                COALESCE(SUM(discount), 0) as discount_total,
+                COALESCE(SUM(tax), 0) as tax_total
             ')
             ->first();
 
@@ -62,6 +63,7 @@ class SalesReportController extends Controller
             'orders_count' => (int) ($totals->orders_count ?? 0),
             'revenue_total' => (int) ($totals->revenue_total ?? 0),
             'discount_total' => (int) ($totals->discount_total ?? 0),
+            'tax_total' => (int) ($totals->tax_total ?? 0),
             'items_sold' => (int) $itemsSold,
             'profit_total' => (int) $profitTotal,
             'average_order' => ($totals->orders_count ?? 0) > 0
@@ -84,10 +86,10 @@ class SalesReportController extends Controller
     protected function applyFilters($query, array $filters)
     {
         return $query
-            ->when($filters['invoice'] ?? null, fn ($q, $invoice) => $q->where('invoice', 'like', '%' . $invoice . '%'))
-            ->when($filters['cashier_id'] ?? null, fn ($q, $cashier) => $q->where('cashier_id', $cashier))
-            ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer))
-            ->when($filters['start_date'] ?? null, fn ($q, $start) => $q->whereDate('created_at', '>=', $start))
-            ->when($filters['end_date'] ?? null, fn ($q, $end) => $q->whereDate('created_at', '<=', $end));
+            ->when($filters['invoice'] ?? null, fn($q, $invoice) => $q->where('invoice', 'like', '%' . $invoice . '%'))
+            ->when($filters['cashier_id'] ?? null, fn($q, $cashier) => $q->where('cashier_id', $cashier))
+            ->when($filters['customer_id'] ?? null, fn($q, $customer) => $q->where('customer_id', $customer))
+            ->when($filters['start_date'] ?? null, fn($q, $start) => $q->whereDate('created_at', '>=', $start))
+            ->when($filters['end_date'] ?? null, fn($q, $end) => $q->whereDate('created_at', '<=', $end));
     }
 }

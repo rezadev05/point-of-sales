@@ -4,6 +4,8 @@ import {
     IconPhoto,
     IconMinus,
     IconPlus,
+    IconAlertTriangle,
+    IconShoppingCart,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 
@@ -15,20 +17,27 @@ const formatPrice = (value = 0) =>
     });
 
 // Single Product Card
-function ProductCard({ product, onAddToCart, isAdding }) {
+function ProductCard({ product, onAddToCart, isAdding, qtyInCart = 0 }) {
     const hasStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= 5;
+    const veryLowStock = product.stock > 0 && product.stock <= 3;
+
+    // ✅ Cek apakah stok habis atau tidak mencukupi untuk tambah lagi
+    const canAdd = hasStock && product.stock > qtyInCart;
+
+    // ✅ Calculate remaining stock after cart
+    const remainingStock = product.stock - qtyInCart;
 
     return (
         <button
-            onClick={() => hasStock && onAddToCart(product)}
-            disabled={!hasStock || isAdding}
+            onClick={() => canAdd && onAddToCart(product)}
+            disabled={!canAdd || isAdding}
             className={`
                 group relative flex flex-col bg-white dark:bg-slate-900
                 rounded-2xl border border-slate-200 dark:border-slate-800
                 overflow-hidden transition-all duration-200
                 ${
-                    hasStock
+                    canAdd && !isAdding
                         ? "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
                         : "opacity-60 cursor-not-allowed"
                 }
@@ -40,7 +49,9 @@ function ProductCard({ product, onAddToCart, isAdding }) {
                     <img
                         src={getProductImageUrl(product.image)}
                         alt={product.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className={`w-full h-full object-cover transition-transform duration-300 ${
+                            canAdd && !isAdding ? "group-hover:scale-105" : ""
+                        }`}
                         loading="lazy"
                     />
                 ) : (
@@ -52,41 +63,118 @@ function ProductCard({ product, onAddToCart, isAdding }) {
                     </div>
                 )}
 
-                {/* Stock Badge */}
-                {lowStock && (
-                    <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400 rounded-full">
+                {/* ✅ Stock Badge - Top Right */}
+                {hasStock && lowStock && !qtyInCart && (
+                    <span
+                        className={`absolute top-2 right-2 px-2 py-0.5 text-xs font-medium ${
+                            veryLowStock
+                                ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400 rounded-full"
+                                : "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400 rounded-full"
+                        }`}
+                    >
+                        {/* {veryLowStock && (
+                            <IconAlertTriangle size={12} strokeWidth={2.5} />
+                        )} */}
                         Sisa {product.stock}
                     </span>
                 )}
 
-                {/* Out of Stock Overlay */}
+                {/* ✅ In Cart Badge - Top Left */}
+                {/* ✅ In Cart Badge - Top Left dengan icon */}
+                {qtyInCart > 0 && (
+                    <span className="absolute top-2 left-2 px-2 py-1 text-xs font-bold bg-primary-500 text-white rounded-full shadow-lg flex items-center gap-1">
+                        <IconShoppingCart size={12} strokeWidth={2.5} />
+                        {qtyInCart}
+                    </span>
+                )}
+
+                {/* ✅ Out of Stock Overlay */}
                 {!hasStock && (
-                    <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
-                        <span className="px-3 py-1 bg-danger-500 text-white text-xs font-semibold rounded-full">
-                            Habis
+                    <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                        <IconAlertTriangle
+                            size={32}
+                            className="text-red-400"
+                            strokeWidth={2}
+                        />
+                        <span className="px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full shadow-lg">
+                            Stok Habis
                         </span>
+                    </div>
+                )}
+
+                {/* ✅ Max Stock Reached Overlay */}
+                {hasStock && !canAdd && qtyInCart > 0 && (
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                        <IconAlertTriangle
+                            size={28}
+                            className="text-orange-400"
+                            strokeWidth={2}
+                        />
+                        <span className="px-3 py-1 bg-orange-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                            Stok Maksimal
+                        </span>
+                    </div>
+                )}
+
+                {/* ✅ Loading Overlay */}
+                {isAdding && (
+                    <div className="absolute inset-0 bg-primary-500/20 backdrop-blur-sm flex items-center justify-center">
+                        <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 )}
             </div>
 
             {/* Product Info */}
-            <div className="flex-1 p-3 flex flex-col justify-between min-h-[80px]">
-                <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2 leading-tight">
+            <div className="flex-1 p-3 flex flex-col gap-2 min-h-[80px] items-start text-left">
+                {/* Title */}
+                <h3 className="w-full text-left text-sm font-medium text-slate-800 dark:text-slate-200 leading-tight">
                     {product.title}
                 </h3>
-                <p className="mt-2 text-base font-bold text-primary-600 dark:text-primary-400">
-                    {formatPrice(product.sell_price)}
-                </p>
-            </div>
 
-            {/* Hover Add Indicator */}
-            {hasStock && (
-                <div className="absolute inset-0 bg-primary-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
-                    <div className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
-                        + Tambah
+                {/* Price & Stock */}
+                <div className="w-full flex items-center justify-between gap-2">
+                    {/* Harga kiri */}
+                    <p className="text-base font-bold text-primary-600 dark:text-primary-400">
+                        {formatPrice(product.sell_price)}
+                    </p>
+
+                    {/* ✅ Stock indicator - kanan */}
+                    <div className="flex flex-col items-end gap-0.5">
+                        <span
+                            className={`
+                                text-xs font-semibold px-2 py-0.5 rounded-full
+                                ${
+                                    !hasStock
+                                        ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                                        : remainingStock <= 3
+                                          ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                                          : remainingStock <= 5
+                                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
+                                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                                }
+                            `}
+                        >
+                            {!hasStock ? "Habis" : `${product.stock}`}
+                        </span>
+
+                        {/* ✅ Show remaining after cart */}
+                        {/* {qtyInCart > 0 && hasStock && (
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {remainingStock}
+                            </span>
+                        )} */}
                     </div>
                 </div>
-            )}
+            </div>
+
+            {/* ✅ Hover Add Indicator - only if can add */}
+            {/* {canAdd && !isAdding && (
+                <div className="absolute inset-0 bg-primary-500/0 group-hover:bg-primary-500/10 transition-all pointer-events-none flex items-center justify-center">
+                    <div className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200">
+                        + Tambahkan
+                    </div>
+                </div>
+            )} */}
         </button>
     );
 }
@@ -163,6 +251,7 @@ export default function ProductGrid({
     onAddToCart,
     addingProductId,
     searchInputRef,
+    carts = [], // ✅ Tambahkan carts prop untuk tracking qty
 }) {
     // Filter products by category and search
     const filteredProducts = products.filter((product) => {
@@ -174,6 +263,12 @@ export default function ProductGrid({
             product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
     });
+
+    // ✅ Helper function to get qty in cart for a product
+    const getQtyInCart = (productId) => {
+        const cartItem = carts.find((cart) => cart.product_id === productId);
+        return cartItem ? cartItem.qty : 0;
+    };
 
     return (
         <div className="h-full flex flex-col">
@@ -218,6 +313,7 @@ export default function ProductGrid({
                                 product={product}
                                 onAddToCart={onAddToCart}
                                 isAdding={addingProductId === product.id}
+                                qtyInCart={getQtyInCart(product.id)} // ✅ Pass qty in cart
                             />
                         ))}
                     </div>

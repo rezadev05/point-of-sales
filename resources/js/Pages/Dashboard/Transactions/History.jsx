@@ -4,6 +4,7 @@ import DashboardLayout from "@/Layouts/DashboardLayout";
 import Button from "@/Components/Dashboard/Button";
 import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
+
 import {
     IconDatabaseOff,
     IconSearch,
@@ -13,6 +14,7 @@ import {
     IconPrinter,
     IconFilter,
     IconX,
+    IconTrash,
 } from "@tabler/icons-react";
 
 const defaultFilters = {
@@ -28,7 +30,7 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-const History = ({ transactions, filters }) => {
+const History = ({ transactions, filters, canDelete }) => {
     const [filterData, setFilterData] = useState({
         ...defaultFilters,
         ...filters,
@@ -111,6 +113,19 @@ const History = ({ transactions, filters }) => {
                                 <span className="w-2 h-2 rounded-full bg-primary-500"></span>
                             )}
                         </button>
+                        <button
+                            onClick={() => {
+                                const url = route(
+                                    "transactions.export",
+                                    filterData,
+                                );
+                                window.location.href = url;
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success-500 hover:bg-success-600 text-white text-sm font-medium transition-colors"
+                        >
+                            <IconCalendar size={18} />
+                            <span>Export Excel</span>
+                        </button>
                         <Link
                             href={route("transactions.index")}
                             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors shadow-lg shadow-primary-500/30"
@@ -137,7 +152,7 @@ const History = ({ transactions, filters }) => {
                                         onChange={(e) =>
                                             handleChange(
                                                 "invoice",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -153,7 +168,7 @@ const History = ({ transactions, filters }) => {
                                         onChange={(e) =>
                                             handleChange(
                                                 "start_date",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -169,7 +184,7 @@ const History = ({ transactions, filters }) => {
                                         onChange={(e) =>
                                             handleChange(
                                                 "end_date",
-                                                e.target.value
+                                                e.target.value,
                                             )
                                         }
                                         className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
@@ -269,26 +284,51 @@ const History = ({ transactions, filters }) => {
                                             </td>
                                             <td className="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-white">
                                                 {formatCurrency(
-                                                    transaction.grand_total ?? 0
+                                                    transaction.grand_total ??
+                                                        0,
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-right text-sm font-semibold text-success-600 dark:text-success-400">
                                                 {formatCurrency(
                                                     transaction.total_profit ??
-                                                        0
+                                                        0,
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-center">
-                                                <Link
-                                                    href={route(
-                                                        "transactions.print",
-                                                        transaction.invoice
+                                                <div className="flex gap-2 justify-center">
+                                                    <Link
+                                                        href={route(
+                                                            "transactions.print",
+                                                            transaction.invoice,
+                                                        )}
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50"
+                                                        title="Cetak Struk"
+                                                    >
+                                                        <IconPrinter
+                                                            size={18}
+                                                        />
+                                                    </Link>
+                                                    {canDelete && (
+                                                        <Button
+                                                            type={"delete"}
+                                                            icon={
+                                                                <IconTrash
+                                                                    size={16}
+                                                                    strokeWidth={
+                                                                        1.5
+                                                                    }
+                                                                />
+                                                            }
+                                                            className={
+                                                                "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
+                                                            }
+                                                            url={route(
+                                                                "transactions.destroy",
+                                                                transaction.id,
+                                                            )}
+                                                        />
                                                     )}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition-colors"
-                                                    title="Cetak Struk"
-                                                >
-                                                    <IconPrinter size={18} />
-                                                </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

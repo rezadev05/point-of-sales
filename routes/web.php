@@ -6,6 +6,7 @@ use App\Http\Controllers\Apps\PaymentSettingController;
 use App\Http\Controllers\Apps\ProductController;
 use App\Http\Controllers\Apps\TransactionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReceiptSettingController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Reports\ProfitReportController;
@@ -59,6 +60,18 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth']], function () {
         ->middlewareFor(['edit', 'update'], 'permission:customers-edit')
         ->middlewareFor('destroy', 'permission:customers-delete');
 
+    Route::get('/settings/receipt', [ReceiptSettingController::class, 'index'])
+        ->name('settings.receipt')
+        ->middleware('permission:receipt-access');
+
+    Route::post('/settings/receipt', [ReceiptSettingController::class, 'update'])
+        ->name('settings.receipt.update')
+        ->middleware('permission:receipt-update');
+
+    Route::delete('/settings/receipt/logo', [ReceiptSettingController::class, 'deleteLogo'])
+        ->name('settings.receipt.deleteLogo')
+        ->middleware('permission:receipt-update');
+
     //route customer history
     Route::get('/customers/{customer}/history', [CustomerController::class, 'getHistory'])->middleware('permission:transactions-access')->name('customers.history');
 
@@ -67,6 +80,16 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth']], function () {
 
     //route transaction
     Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions-access')->name('transactions.index');
+
+    Route::delete(
+        '/transactions/{transaction}',
+        [TransactionController::class, 'destroy']
+    )->name('transactions.destroy')
+        ->middleware('permission:transactions-access');
+
+    Route::get('/transactions/export', [TransactionController::class, 'export'])
+        ->name('transactions.export');
+
 
     //route transaction searchProduct
     Route::post('/transactions/searchProduct', [TransactionController::class, 'searchProduct'])->middleware('permission:transactions-access')->name('transactions.searchProduct');

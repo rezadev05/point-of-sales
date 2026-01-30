@@ -13,6 +13,7 @@ import {
     IconFileDescription,
     IconFolder,
     IconLayout2,
+    IconReceipt,
     IconSchool,
     IconShoppingCart,
     IconTable,
@@ -82,7 +83,10 @@ export default function Menu() {
                 {
                     title: "Riwayat Transaksi",
                     href: route("transactions.history"),
-                    active: url === "/dashboard/transactions/history" ? true : false,
+                    active:
+                        url === "/dashboard/transactions/history"
+                            ? true
+                            : false,
                     icon: <IconClockHour6 size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["transactions-access"]),
                 },
@@ -163,6 +167,13 @@ export default function Menu() {
                     active: url === "/dashboard/settings/payments",
                     icon: <IconCreditCard size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["payment-settings-access"]),
+                },
+                {
+                    title: "Receipt Settings",
+                    href: route("settings.receipt"),
+                    active: url === "/dashboard/settings/receipt",
+                    icon: <IconReceipt size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["receipt-access"]),
                 },
             ],
         },

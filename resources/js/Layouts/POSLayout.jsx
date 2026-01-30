@@ -19,18 +19,35 @@ export default function POSLayout({ children }) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-    // Update time every minute
+    // // Update time every minute
+    // useEffect(() => {
+    //     const timer = setInterval(() => {
+    //         setCurrentTime(new Date());
+    //     }, 60000);
+    //     return () => clearInterval(timer);
+    // }, []);
+
+    // Update time every second (real-time)
+
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
-        }, 60000);
+        }, 1000); // 1 detik
         return () => clearInterval(timer);
     }, []);
+
+    // const formatTime = (date) => {
+    //     return date.toLocaleTimeString("id-ID", {
+    //         hour: "2-digit",
+    //         minute: "2-digit",
+    //     });
+    // };
 
     const formatTime = (date) => {
         return date.toLocaleTimeString("id-ID", {
             hour: "2-digit",
             minute: "2-digit",
+            second: "2-digit",
         });
     };
 
