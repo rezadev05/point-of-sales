@@ -23,11 +23,11 @@ class RoleRequest extends FormRequest
                 Rule::unique('roles', 'name')->ignore($this->route('role')),
             ],
 
-            'selectedPermission' => [
-                'required',
-                'array',
-                'min:1',
-            ],
+            // 'selectedPermission' => [
+            //     'required',
+            //     'array',
+            //     'min:1',
+            // ],
 
             'selectedPermission.*' => [
                 'integer',
@@ -41,7 +41,7 @@ class RoleRequest extends FormRequest
         return [
             'name.required' => 'Nama group wajib diisi',
             'name.unique' => 'Nama group sudah digunakan',
-            'selectedPermission.required' => 'Minimal pilih 1 hak akses',
+            // 'selectedPermission.required' => 'Minimal pilih 1 hak akses',
             'selectedPermission.array' => 'Format hak akses tidak valid',
             'selectedPermission.*.exists' => 'Hak akses tidak ditemukan',
         ];

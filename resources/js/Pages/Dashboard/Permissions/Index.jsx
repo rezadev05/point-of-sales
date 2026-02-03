@@ -51,7 +51,7 @@ export default function Index() {
                                         className="text-primary-600 dark:text-primary-400"
                                     />
                                 </div>
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 break-words">
                                     {permission.name}
                                 </span>
                             </div>

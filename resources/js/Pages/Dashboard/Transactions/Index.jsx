@@ -28,6 +28,7 @@ import {
     IconTrash,
     IconCash,
     IconCreditCard,
+    IconAlertCircle,
 } from "@tabler/icons-react";
 
 const formatPrice = (value = 0) =>
@@ -629,7 +630,7 @@ export default function Index({
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 break-words">
                                                         {item.product?.title ||
                                                             "Produk"}
                                                     </p>
@@ -646,7 +647,7 @@ export default function Index({
                                                         item.product.stock <=
                                                             5 && (
                                                             <p
-                                                                className={`text-[10px] font-semibold ${
+                                                                className={`text-[10px] font-semibold flex items-center gap-1 ${
                                                                     item.product
                                                                         .stock <=
                                                                     0
@@ -654,10 +655,11 @@ export default function Index({
                                                                         : "text-orange-600"
                                                                 }`}
                                                             >
+                                                                <IconAlertCircle className="h-3 w-3 flex-shrink-0" />
                                                                 {item.product
                                                                     .stock <= 0
-                                                                    ? "⚠️ Stok Habis!"
-                                                                    : `⚠️ Stok: ${item.product.stock}`}
+                                                                    ? "Stok Habis!"
+                                                                    : `Stok: ${item.product.stock}`}
                                                             </p>
                                                         )}
                                                 </div>

@@ -12,57 +12,61 @@ class PermissionSeeder extends Seeder
      * Run the database seeds.
      */
     public function run(): void
+
     {
+
         // dashboard permissions
-        Permission::create(['name' => 'dashboard-access']);
+        Permission::firstOrCreate(['name' => 'dashboard-access']);
 
         // users permissions
-        Permission::create(['name' => 'users-access']);
-        Permission::create(['name' => 'users-create']);
-        Permission::create(['name' => 'users-update']);
-        Permission::create(['name' => 'users-delete']);
+        Permission::firstOrCreate(['name' => 'users-access']);
+        Permission::firstOrCreate(['name' => 'users-create']);
+        Permission::firstOrCreate(['name' => 'users-update']);
+        Permission::firstOrCreate(['name' => 'users-delete']);
 
         // roles permissions
-        Permission::create(['name' => 'roles-access']);
-        Permission::create(['name' => 'roles-create']);
-        Permission::create(['name' => 'roles-update']);
-        Permission::create(['name' => 'roles-delete']);
+        Permission::firstOrCreate(['name' => 'roles-access']);
+        Permission::firstOrCreate(['name' => 'roles-create']);
+        Permission::firstOrCreate(['name' => 'roles-update']);
+        Permission::firstOrCreate(['name' => 'roles-delete']);
 
         // permissions permissions
-        Permission::create(['name' => 'permissions-access']);
-        Permission::create(['name' => 'permissions-create']);
-        Permission::create(['name' => 'permissions-update']);
-        Permission::create(['name' => 'permissions-delete']);
+        Permission::firstOrCreate(['name' => 'permissions-access']);
+        Permission::firstOrCreate(['name' => 'permissions-create']);
+        Permission::firstOrCreate(['name' => 'permissions-update']);
+        Permission::firstOrCreate(['name' => 'permissions-delete']);
 
         //permission categories
-        Permission::create(['name' => 'categories-access']);
-        Permission::create(['name' => 'categories-create']);
-        Permission::create(['name' => 'categories-edit']);
-        Permission::create(['name' => 'categories-delete']);
+        Permission::firstOrCreate(['name' => 'categories-access']);
+        Permission::firstOrCreate(['name' => 'categories-create']);
+        Permission::firstOrCreate(['name' => 'categories-edit']);
+        Permission::firstOrCreate(['name' => 'categories-delete']);
 
         //permission products
-        Permission::create(['name' => 'products-access']);
-        Permission::create(['name' => 'products-create']);
-        Permission::create(['name' => 'products-edit']);
-        Permission::create(['name' => 'products-delete']);
+        Permission::firstOrCreate(['name' => 'products-access']);
+        Permission::firstOrCreate(['name' => 'products-create']);
+        Permission::firstOrCreate(['name' => 'products-edit']);
+        Permission::firstOrCreate(['name' => 'products-delete']);
 
         //permission customers
-        Permission::create(['name' => 'customers-access']);
-        Permission::create(['name' => 'customers-create']);
-        Permission::create(['name' => 'customers-edit']);
-        Permission::create(['name' => 'customers-delete']);
+        Permission::firstOrCreate(['name' => 'customers-access']);
+        Permission::firstOrCreate(['name' => 'customers-create']);
+        Permission::firstOrCreate(['name' => 'customers-edit']);
+        Permission::firstOrCreate(['name' => 'customers-delete']);
 
         //permission transactions
-        Permission::create(['name' => 'transactions-access']);
+        Permission::firstOrCreate(['name' => 'transactions-access']);
+        Permission::firstOrCreate(['name' => 'transactions-delete']);
+        Permission::firstOrCreate(['name' => 'transactions-export']);
 
         // permission reports
-        Permission::create(['name' => 'reports-access']);
-        Permission::create(['name' => 'profits-access']);
+        Permission::firstOrCreate(['name' => 'reports-access']);
+        Permission::firstOrCreate(['name' => 'profits-access']);
 
         // payment settings
-        Permission::create(['name' => 'payment-settings-access']);
+        Permission::firstOrCreate(['name' => 'payment-settings-access']);
 
-        Permission::create(['name' => 'receipt-access']);
-        Permission::create(['name' => 'receipt-update']);
+        Permission::firstOrCreate(['name' => 'receipt-access']);
+        Permission::firstOrCreate(['name' => 'receipt-update']);
     }
 }

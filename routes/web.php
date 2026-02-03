@@ -85,9 +85,10 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth']], function () {
         '/transactions/{transaction}',
         [TransactionController::class, 'destroy']
     )->name('transactions.destroy')
-        ->middleware('permission:transactions-access');
+        ->middleware('permission:transactions-delete');
 
     Route::get('/transactions/export', [TransactionController::class, 'export'])
+        ->middleware('permission:transactions-export')
         ->name('transactions.export');
 
 

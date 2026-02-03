@@ -21,11 +21,14 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('products-access', '%products%');
         $this->createRoleWithPermissions('customers-access', '%customers%');
         $this->createRoleWithPermissions('transactions-access', '%transactions%');
+        $this->createRoleWithPermissions('transactions-delete', '%transactions-delete%');
+        $this->createRoleWithPermissions('transactions-export', '%transactions-export%');
         $this->createRoleWithPermissions('reports-access', '%reports%');
         $this->createRoleWithPermissions('profits-access', '%profits%');
         $this->createRoleWithPermissions('payment-settings-access', '%payment-settings%');
         $this->createRoleWithPermissions('receipt-access', '%receipt%');
         $this->createRoleWithPermissions('receipt-update', '%receipt-update%');
+
 
         Role::create(['name' => 'super-admin']);
 
