@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::create([
+        $user = User::firstOrCreate([
             'name' => 'Arya Dwi Putra',
             'email' => 'arya@gmail.com',
             'password' => bcrypt('password'),
@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
         // assign a role to user
         $user->assignRole($role);
 
-        $cashier = User::create([
+        $cashier = User::firstOrCreate([
             'name' => 'Cashier',
             'email' => 'cashier@gmail.com',
             'password' => bcrypt('password'),
