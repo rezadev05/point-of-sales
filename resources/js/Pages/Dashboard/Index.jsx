@@ -1,6 +1,6 @@
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, Link } from "@inertiajs/react";
-import { useEffect, useMemo, useRef } from "react";
+import { Head, Link, router } from "@inertiajs/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import {
     IconBox,
@@ -15,6 +15,9 @@ import {
     IconShoppingCart,
     IconChartBar,
     IconClock,
+    IconFilter,
+    IconX,
+    IconSearch,
 } from "@tabler/icons-react";
 
 const formatCurrency = (value = 0) =>
@@ -133,6 +136,14 @@ function ListCard({ title, subtitle, icon: Icon, children, emptyMessage }) {
     );
 }
 
+const castFilterString = (value) =>
+    typeof value === "number" ? String(value) : (value ?? "");
+
+const defaultFilterState = {
+    start_date: "",
+    end_date: "",
+};
+
 export default function Dashboard({
     totalCategories,
     totalProducts,
@@ -146,9 +157,48 @@ export default function Dashboard({
     topProducts = [],
     recentTransactions = [],
     topCustomers = [],
+    filters = {},
 }) {
     const chartRef = useRef(null);
     const chartInstance = useRef(null);
+
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterData, setFilterData] = useState({
+        ...defaultFilterState,
+        start_date: castFilterString(filters?.start_date),
+        end_date: castFilterString(filters?.end_date),
+    });
+
+    useEffect(() => {
+        setFilterData({
+            ...defaultFilterState,
+            start_date: castFilterString(filters?.start_date),
+            end_date: castFilterString(filters?.end_date),
+        });
+    }, [filters]);
+
+    const handleChange = (field, value) =>
+        setFilterData((prev) => ({ ...prev, [field]: value }));
+
+    const applyFilters = (e) => {
+        e.preventDefault();
+        router.get(route("dashboard"), filterData, {
+            preserveScroll: true,
+            preserveState: true,
+        });
+        setShowFilters(false);
+    };
+
+    const resetFilters = () => {
+        setFilterData(defaultFilterState);
+        router.get(route("dashboard"), defaultFilterState, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
+    };
+
+    const hasActiveFilters = filterData.start_date || filterData.end_date;
 
     const chartData = useMemo(() => revenueTrend ?? [], [revenueTrend]);
 
@@ -257,14 +307,91 @@ export default function Dashboard({
                             Ringkasan aktivitas bisnis Anda
                         </p>
                     </div>
-                    <Link
-                        href={route("transactions.index")}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors shadow-lg shadow-primary-500/30"
-                    >
-                        <IconShoppingCart size={18} />
-                        <span>Transaksi Baru</span>
-                    </Link>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+                                showFilters || hasActiveFilters
+                                    ? "bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-950/50 dark:border-primary-800 dark:text-primary-400"
+                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                            }`}
+                        >
+                            {" "}
+                            <IconFilter size={18} />
+                            <span>Filter</span>
+                            {hasActiveFilters && (
+                                <span className="w-2 h-2 rounded-full bg-primary-500"></span>
+                            )}
+                        </button>
+                        <Link
+                            href={route("transactions.index")}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors shadow-lg shadow-primary-500/30"
+                        >
+                            <IconShoppingCart size={18} />
+                            <span>Transaksi Baru</span>
+                        </Link>
+                    </div>
                 </div>
+
+                {/* Filters Panel - Hanya 2 kolom */}
+                {showFilters && (
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 animate-slide-up">
+                        <form onSubmit={applyFilters}>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Tanggal Mulai
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={filterData.start_date}
+                                        onChange={(e) =>
+                                            handleChange(
+                                                "start_date",
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Tanggal Akhir
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={filterData.end_date}
+                                        onChange={(e) =>
+                                            handleChange(
+                                                "end_date",
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                {hasActiveFilters && (
+                                    <button
+                                        type="button"
+                                        onClick={resetFilters}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <IconX size={18} />
+                                    </button>
+                                )}
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors"
+                                >
+                                    <IconSearch size={18} />
+                                    Terapkan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
 
                 {/* Main Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
