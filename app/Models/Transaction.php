@@ -39,6 +39,23 @@ class Transaction extends Model
     ];
 
     /**
+     * casts
+     *
+     * @var array
+     */
+    protected $casts = [
+        'cashier_id'        => 'integer',
+        'customer_id'       => 'integer',
+        'cash'              => 'integer',
+        'change'            => 'integer',
+        'discount_value'    => 'integer',
+        'discount'          => 'integer',
+        'tax_value'         => 'integer',
+        'tax'               => 'integer',
+        'grand_total'       => 'integer',
+    ];
+
+    /**
      * details
      *
      * @return void

@@ -31,7 +31,14 @@ class Cart extends Model
      * @var array
      */
     protected $casts = [
+        'cashier_id' => 'integer',
+        'product_id' => 'integer',
+        'qty' => 'integer',
+        'price' => 'integer',
+        'hold_id' => 'integer',
         'held_at' => 'datetime',
+        'discount' => 'integer',
+
     ];
 
     /**

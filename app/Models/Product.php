@@ -27,6 +27,18 @@ class Product extends Model
     ];
 
     /**
+     * casts
+     *
+     * @var array
+     */
+    protected $casts = [
+        'buy_price'     => 'integer',
+        'sell_price'    => 'integer',
+        'category_id'   => 'integer',
+        'stock'         => 'integer'
+    ];
+
+    /**
      * category
      *
      * @return void

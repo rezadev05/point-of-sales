@@ -10,14 +10,25 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 class Profit extends Model
 {
     use HasFactory;
-    
+
     /**
      * fillable
      *
      * @var array
      */
     protected $fillable = [
-        'transaction_id', 'total'
+        'transaction_id',
+        'total'
+    ];
+
+    /**
+     * casts
+     *
+     * @var array
+     */
+    protected $casts = [
+        'transaction_id' => 'integer',
+        'total' => 'integer',
     ];
 
     /**
@@ -38,7 +49,7 @@ class Profit extends Model
     protected function createdAt(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => Carbon::parse($value)->format('d-M-Y H:i:s'),
+            get: fn($value) => Carbon::parse($value)->format('d-M-Y H:i:s'),
         );
     }
 }

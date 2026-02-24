@@ -8,14 +8,29 @@ use Illuminate\Database\Eloquent\Model;
 class TransactionDetail extends Model
 {
     use HasFactory;
-    
+
     /**
      * fillable
      *
      * @var array
      */
     protected $fillable = [
-        'transaction_id', 'product_id', 'qty', 'price'
+        'transaction_id',
+        'product_id',
+        'qty',
+        'price'
+    ];
+
+    /**
+     * casts
+     *
+     * @var array
+     */
+    protected $casts = [
+        'transaction_id' => 'integer',
+        'product_id' => 'integer',
+        'qty' => 'integer',
+        'price' => 'integer',
     ];
 
     /**

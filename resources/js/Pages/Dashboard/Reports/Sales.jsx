@@ -243,7 +243,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers }) => {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     {summaryCards.map((card) => (
                         <SummaryCard key={card.title} {...card} />
                     ))}
