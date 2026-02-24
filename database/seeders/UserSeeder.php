@@ -15,32 +15,25 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        //Super Admin User
         $user = User::firstOrCreate([
-            'name' => 'Arya Dwi Putra',
-            'email' => 'arya@gmail.com',
+            'name' => 'John Doe',
+            'email' => 'johndoe@gmail.com',
             'password' => bcrypt('password'),
         ]);
 
-        // get admin role
         $role = Role::where('name', 'super-admin')->first();
-
-        // get all permissions
         $permissions = Permission::all();
-
-        // assign role to user
         $user->syncPermissions($permissions);
-
-        // assign a role to user
         $user->assignRole($role);
 
+        // Cashier User
         $cashier = User::firstOrCreate([
             'name' => 'Cashier',
             'email' => 'cashier@gmail.com',
             'password' => bcrypt('password'),
         ]);
-
         $transactionsPermission = Permission::where('name', 'transactions-access')->first();
-
         $cashier->syncPermissions($transactionsPermission);
     }
 }
